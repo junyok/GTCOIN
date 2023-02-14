@@ -1,0 +1,480 @@
+pragma solidity ^0.5.0;
+
+interface IKIP13 {
+    function supportsInterface(bytes4 interfaceId) external view returns (bool);
+}
+contract IKIP17 is IKIP13 {
+    event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
+    event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId);
+    event ApprovalForAll(address indexed owner, address indexed operator, bool approved);
+    function balanceOf(address owner) public view returns (uint256 balance);
+    function ownerOf(uint256 tokenId) public view returns (address owner);
+    function safeTransferFrom(address from, address to, uint256 tokenId) public;
+    function transferFrom(address from, address to, uint256 tokenId) public;
+    function approve(address to, uint256 tokenId) public;
+    function getApproved(uint256 tokenId) public view returns (address operator);
+    function setApprovalForAll(address operator, bool _approved) public;
+    function isApprovedForAll(address owner, address operator) public view returns (bool);
+    function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data) public;
+}
+contract IERC721Receiver {
+    function onERC721Received(address operator, address from, uint256 tokenId, bytes memory data)
+    public returns (bytes4);
+}
+contract IKIP17Receiver {
+    function onKIP17Received(address operator, address from, uint256 tokenId, bytes memory data)
+    public returns (bytes4);
+}
+library SafeMath {
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a + b;
+        require(c >= a, "SafeMath: addition overflow");
+        return c;
+    }
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        return sub(a, b, "SafeMath: subtraction overflow");
+    }
+    function sub(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+        require(b <= a, errorMessage);
+        uint256 c = a - b;
+        return c;
+    }
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+        if (a == 0) {return 0;}
+        uint256 c = a * b;
+        require(c / a == b, "SafeMath: multiplication overflow");
+        return c;
+    }
+    function div(uint256 a, uint256 b) internal pure returns (uint256) {
+        return div(a, b, "SafeMath: division by zero");
+    }
+    function div(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+        require(b > 0, errorMessage);
+        uint256 c = a / b;
+        return c;
+    }
+    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
+        return mod(a, b, "SafeMath: modulo by zero");
+    }
+    function mod(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+        require(b != 0, errorMessage);
+        return a % b;
+    }
+    function divCeil(uint256 a, uint256 b) internal pure returns (uint256) {
+        require(b > 0, "SafeMath: division by zero");
+        uint256 c = (a + b - 1) / b;
+        return c;
+    }
+}
+library Address {
+    function isContract(address account) internal view returns (bool) {
+        uint32 size;
+        assembly {size := extcodesize(account)}
+        return (size > 0);
+    }
+    function toPayable(address account) internal pure returns (address payable) {
+        return address(uint160(account));
+    }
+    function sendValue(address payable recipient, uint256 amount) internal {
+        require(address(this).balance >= amount, "Address: insufficient balance");
+        (bool success, ) = recipient.call.value(amount)("");
+        require(success, "Address: unable to send value, recipient may have reverted");
+    }
+}
+contract Context {
+    constructor () internal { }
+    function _msgSender() internal view returns (address payable) {return msg.sender;}
+    function _msgData() internal view returns (bytes memory) {
+        this; // silence state mutability warning without generating bytecode - see https://github.com/ethereum/solidity/issues/2691
+        return msg.data;
+    }
+}
+contract Ownable is Context {
+    address private _owner;
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    constructor () internal {
+        address msgSender = _msgSender();
+        _owner = msgSender;
+        emit OwnershipTransferred(address(0), msgSender);
+    }
+    function owner() public view returns (address) {return _owner;}
+    modifier onlyOwner() {
+        require(isOwner(), "Ownable: caller is not the owner");
+        _;
+    }
+    function isOwner() public view returns (bool) {return _msgSender() == _owner;}
+    function renounceOwnership() public onlyOwner {
+        emit OwnershipTransferred(_owner, address(0));
+        _owner = address(0);
+    }
+    function transferOwnership(address newOwner) public onlyOwner {
+        _transferOwnership(newOwner);
+    }
+    function _transferOwnership(address newOwner) internal {
+        require(newOwner != address(0), "Ownable: new owner is the zero address");
+        emit OwnershipTransferred(_owner, newOwner);
+        _owner = newOwner;
+    }
+}
+library Counters {
+    using SafeMath for uint256;
+    struct Counter {uint256 _value;}
+    function current(Counter storage counter) internal view returns (uint256) {return counter._value;}
+    function increment(Counter storage counter) internal {counter._value += 1;}
+    function decrement(Counter storage counter) internal {counter._value = counter._value.sub(1);}
+}
+contract KIP13 is IKIP13 {
+    bytes4 private constant _INTERFACE_ID_KIP13 = 0x01ffc9a7;
+    mapping(bytes4 => bool) private _supportedInterfaces;
+    constructor () internal {_registerInterface(_INTERFACE_ID_KIP13);}
+    function supportsInterface(bytes4 interfaceId) external view returns (bool) {return _supportedInterfaces[interfaceId];}
+    function _registerInterface(bytes4 interfaceId) internal {
+        require(interfaceId != 0xffffffff, "KIP13: invalid interface id");
+        _supportedInterfaces[interfaceId] = true;
+    }
+}
+contract IKIP17Enumerable is IKIP17 {
+    function totalSupply() public view returns (uint256);
+    function tokenOfOwnerByIndex(address owner, uint256 index) public view returns (uint256 tokenId);
+    function tokenByIndex(uint256 index) public view returns (uint256);
+}
+contract IKIP17Metadata is IKIP17 {
+    function name() external view returns (string memory);
+    function symbol() external view returns (string memory);
+    //function tokenURI(uint256 tokenId) external view returns (string memory);
+}
+contract KIP17 is KIP13, IKIP17 {
+    using SafeMath for uint256;
+    using Address for address;
+    string public baseTokenURL;
+    using Counters for Counters.Counter;
+    bytes4 private constant _KIP17_RECEIVED = 0x6745782b;
+    bytes4 private constant _ERC721_RECEIVED = 0x150b7a02;
+    mapping (uint256 => address) private _tokenOwner;
+    mapping (uint256 => address) private _tokenApprovals;
+    mapping (address => Counters.Counter) private _ownedTokensCount;
+    mapping (address => mapping (address => bool)) private _operatorApprovals;
+    bytes4 private constant _INTERFACE_ID_KIP17 = 0x80ac58cd;
+    mapping (address => bool) public isManager;
+    address private Contract_owner;
+    constructor (string memory tokenURL_) public {
+        baseTokenURL = tokenURL_;
+        Contract_owner = msg.sender;
+        _registerInterface(_INTERFACE_ID_KIP17);
+    }    
+    function getcontractowner() public view returns (address) {return Contract_owner;}
+    function getiscontractowner(address adr) public view returns (bool) {return adr == Contract_owner ? true :false;}
+    function checkManager(address walletAddress) public view returns (bool) {return isManager[walletAddress] == true ? true :false;}
+    function setManager(address walletAddress , bool st) public returns (bool) {
+        require(Contract_owner == msg.sender); // Admin only function
+        isManager[walletAddress]=st;
+        return isManager[walletAddress];
+    }
+    function get_baseURL() public view returns  (string memory) {return baseTokenURL;}
+    function set_baseURL(string memory newBaseURL_) public returns(bool){
+        require( msg.sender == Contract_owner, "Contract manager only function");
+        baseTokenURL = newBaseURL_;
+        return true;
+    }
+    function tokenURI(uint256 tokenId) public view returns (string memory) {
+        require(_exists(tokenId), "KIP17Metadata: URI query for nonexistent token");
+        string memory infos = baseTokenURL; 
+        infos = concat(infos , itod(tokenId) );
+        infos = concat(infos , ".json");
+        return infos;
+    }
+    function transferContract_owner(address newOnwer) public {
+        require(Contract_owner == msg.sender); // Admin only function
+        _transferContract_owner(newOnwer);
+    }
+    function _transferContract_owner(address newOwner) internal {
+        Contract_owner = newOwner;
+    }    
+    function balanceOf(address owner) public view returns (uint256) {
+        require(owner != address(0), "KIP17: balance query for the zero address");
+        return _ownedTokensCount[owner].current();
+    }
+    function ownerOf(uint256 tokenId) public view returns (address) {
+        address owner = _tokenOwner[tokenId];
+        require(owner != address(0), "KIP17: owner query for nonexistent token");
+        return owner;
+    }    
+    function approve(address to, uint256 tokenId) public {
+        address owner = ownerOf(tokenId);
+        require(to != owner, "KIP17: approval to current owner");
+        require(msg.sender == owner || isApprovedForAll(owner, msg.sender),
+            "KIP17: approve caller is not owner nor approved for all"
+        );
+        _tokenApprovals[tokenId] = to;
+        emit Approval(owner, to, tokenId);
+    }
+    function getApproved(uint256 tokenId) public view returns (address) {
+        require(_exists(tokenId), "KIP17: approved query for nonexistent token");
+        return _tokenApprovals[tokenId];
+    }
+    function setApprovalForAll(address to, bool approved) public {
+        require(to != msg.sender, "KIP17: approve to caller");
+        _operatorApprovals[msg.sender][to] = approved;
+        emit ApprovalForAll(msg.sender, to, approved);
+    }
+    function isApprovedForAll(address owner, address operator) public view returns (bool) {
+        return _operatorApprovals[owner][operator];
+    }
+    
+    function transferFrom(address from, address to, uint256 tokenId) public {
+        require(_isApprovedOrOwner(msg.sender, tokenId )  , "KIP17: transfer caller is not owner nor approved");
+        _transferFrom(from, to, tokenId);
+    }
+    function safeTransferFrom(address from, address to, uint256 tokenId) public {
+        safeTransferFrom(from, to, tokenId, "");
+    }
+    function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory _data) public {
+        transferFrom(from, to, tokenId);
+        require(_checkOnKIP17Received(from, to, tokenId, _data), "KIP17: transfer to non KIP17Receiver implementer");
+    }
+    function _transferFrom(address from, address to, uint256 tokenId) internal {
+        require(ownerOf(tokenId) == from || isManager[msg.sender]==true || msg.sender == Contract_owner , "KIP17: transfer of token that is not own");
+        require(to != address(0), "KIP17: transfer to the zero address");
+        _clearApproval(tokenId);
+        _ownedTokensCount[from].decrement();
+        _ownedTokensCount[to].increment();
+        _tokenOwner[tokenId] = to;
+        emit Transfer(from, to, tokenId);
+    }
+    function _exists(uint256 tokenId) internal view returns (bool) {
+        address owner = _tokenOwner[tokenId];
+        return owner != address(0);
+    }
+    function _isApprovedOrOwner(address spender, uint256 tokenId) internal view returns (bool) {
+        require(_exists(tokenId), "KIP17: operator query for nonexistent token");
+        address owner = ownerOf(tokenId);
+        return (spender == owner || getApproved(tokenId) == spender || isApprovedForAll(owner, spender));
+    }
+    function _mint(address to, uint256 tokenId) internal {
+        require(to != address(0), "KIP17: mint to the zero address");
+        require(!_exists(tokenId), "KIP17: token already minted");
+        _tokenOwner[tokenId] = to;
+        _ownedTokensCount[to].increment();
+        emit Transfer(address(0), to, tokenId);
+    }
+    function _burn(address owner, uint256 tokenId) internal {
+        require(ownerOf(tokenId) == owner, "KIP17: burn of token that is not own");
+        _clearApproval(tokenId);
+        _ownedTokensCount[owner].decrement();
+        _tokenOwner[tokenId] = address(0);
+        emit Transfer(owner, address(0), tokenId);
+    }
+    function _burn(uint256 tokenId) internal {
+        _burn(ownerOf(tokenId), tokenId);
+    }    
+    function _checkOnKIP17Received(address from, address to, uint256 tokenId, bytes memory _data)internal returns (bool){
+        if (!to.isContract()) {return true;}
+        bytes4 retval = IERC721Receiver(to).onERC721Received(msg.sender, from, tokenId, _data);
+        if (retval == _ERC721_RECEIVED) {
+            return true;
+        }
+        retval = IKIP17Receiver(to).onKIP17Received(msg.sender, from, tokenId, _data);
+        return (retval == _KIP17_RECEIVED);
+    }
+    function _clearApproval(uint256 tokenId) private {
+        if (_tokenApprovals[tokenId] != address(0)) {_tokenApprovals[tokenId] = address(0);}
+    }
+    function concat(string memory _a, string memory _b) public pure returns (string memory){
+        bytes memory bytes_a = bytes(_a);
+        bytes memory bytes_b = bytes(_b);
+        string memory length_ab = new string(bytes_a.length + bytes_b.length);
+        bytes memory bytes_c = bytes(length_ab);
+        uint k = 0;
+        for (uint i = 0; i < bytes_a.length; i++) bytes_c[k++] = bytes_a[i];
+        for (uint i = 0; i < bytes_b.length; i++) bytes_c[k++] = bytes_b[i];
+        return string(bytes_c);
+    }
+    function itod(uint256 x) private pure returns (string memory) {
+        if (x > 0) {
+            string memory str;
+            while (x > 0) {
+                str = string(abi.encodePacked(uint8(x % 10 + 48), str));
+                x /= 10;
+            }
+            return str;
+        }
+        return "0";
+    }
+}
+contract KIP17Enumerable is KIP13, KIP17, IKIP17Enumerable {
+    mapping(address => uint256[]) private _ownedTokens;
+    mapping(uint256 => uint256) private _ownedTokensIndex;
+    uint256[] private _allTokens;
+    mapping(uint256 => uint256) private _allTokensIndex;
+    bytes4 private constant _INTERFACE_ID_KIP17_ENUMERABLE = 0x780e9d63;
+    constructor () public {_registerInterface(_INTERFACE_ID_KIP17_ENUMERABLE);}
+    function tokenOfOwnerByIndex(address owner, uint256 index) public view returns (uint256) {
+        require(index < balanceOf(owner), "KIP17Enumerable: owner index out of bounds");
+        return _ownedTokens[owner][index];
+    }
+    function totalSupply() public view returns (uint256) {return _allTokens.length;}
+    function tokenByIndex(uint256 index) public view returns (uint256) {
+        require(index < totalSupply(), "KIP17Enumerable: global index out of bounds");
+        return _allTokens[index];
+    }
+    function _transferFrom(address from, address to, uint256 tokenId) internal {
+        super._transferFrom(from, to, tokenId);
+        _removeTokenFromOwnerEnumeration(from, tokenId);
+        _addTokenToOwnerEnumeration(to, tokenId);
+    }
+    function _mint(address to, uint256 tokenId) internal {
+        super._mint(to, tokenId);
+        _addTokenToOwnerEnumeration(to, tokenId);
+        _addTokenToAllTokensEnumeration(tokenId);
+    }
+    function _burn(address owner, uint256 tokenId) internal {
+        super._burn(owner, tokenId);
+        _removeTokenFromOwnerEnumeration(owner, tokenId);
+        _ownedTokensIndex[tokenId] = 0;
+        _removeTokenFromAllTokensEnumeration(tokenId);
+    }
+    function _tokensOfOwner(address owner) internal view returns (uint256[] storage) {return _ownedTokens[owner];}
+    function _addTokenToOwnerEnumeration(address to, uint256 tokenId) private {
+        _ownedTokensIndex[tokenId] = _ownedTokens[to].length;
+        _ownedTokens[to].push(tokenId);
+    }
+    function _addTokenToAllTokensEnumeration(uint256 tokenId) private {
+        _allTokensIndex[tokenId] = _allTokens.length;
+        _allTokens.push(tokenId);
+    }
+    function balanceByAddressAll(address userwallet) public view returns (uint256[] memory) {
+        uint256 cnt = _ownedTokens[userwallet].length ;//_tokenOwner[userwallet].length();
+        uint256[] memory rets = new uint256[](cnt);
+        for (uint i = 0; i < cnt; i++) {
+            rets[i] = _ownedTokens[userwallet][i];
+        }
+        return rets;
+    }
+
+    function _removeTokenFromOwnerEnumeration(address from, uint256 tokenId) private {
+        uint256 lastTokenIndex = _ownedTokens[from].length.sub(1);
+        uint256 tokenIndex = _ownedTokensIndex[tokenId];
+        if (tokenIndex != lastTokenIndex) {
+            uint256 lastTokenId = _ownedTokens[from][lastTokenIndex];
+            _ownedTokens[from][tokenIndex] = lastTokenId; // Move the last token to the slot of the to-delete token
+            _ownedTokensIndex[lastTokenId] = tokenIndex; // Update the moved token's index
+        }
+        _ownedTokens[from].length--;
+    }
+    function _removeTokenFromAllTokensEnumeration(uint256 tokenId) private {
+        uint256 lastTokenIndex = _allTokens.length.sub(1);
+        uint256 tokenIndex = _allTokensIndex[tokenId];
+        uint256 lastTokenId = _allTokens[lastTokenIndex];
+        _allTokens[tokenIndex] = lastTokenId; // Move the last token to the slot of the to-delete token
+        _allTokensIndex[lastTokenId] = tokenIndex; // Update the moved token's index
+        _allTokens.length--;
+        _allTokensIndex[tokenId] = 0;
+    }
+}
+
+contract KIP17Burnable is KIP13, KIP17 {
+    bytes4 private constant _INTERFACE_ID_KIP17_BURNABLE = 0x42966c68;
+    constructor () public {
+        _registerInterface(_INTERFACE_ID_KIP17_BURNABLE);
+    }
+    function burn(uint256 tokenId) public {
+        require(_isApprovedOrOwner(msg.sender, tokenId), "KIP17Burnable: caller is not owner nor approved");
+        _burn(tokenId);
+    }
+}
+contract KIP17Metadata is KIP13, KIP17, IKIP17Metadata {
+    string private _name;
+    string private _symbol;
+    bytes4 private constant _INTERFACE_ID_KIP17_METADATA = 0x5b5e139f;
+    constructor (string memory name_, string memory symbol_, string memory tokenURL_) public KIP17(tokenURL_) {
+        _name = name_;
+        _symbol = symbol_;        
+        _registerInterface(_INTERFACE_ID_KIP17_METADATA);
+    }    
+    function name() external view returns (string memory) {return _name;}
+    function symbol() external view returns (string memory) {return _symbol;}    
+    function _burn(address owner, uint256 tokenId) internal {
+        super._burn(owner, tokenId);        
+    }
+    
+}
+contract KIP17Full is KIP17, KIP17Enumerable, KIP17Metadata {
+    constructor (string memory name_, string memory symbol_,string memory tokenURL_) public KIP17Metadata(name_,symbol_, tokenURL_) {
+    }
+}
+contract NFTMANIANFT is KIP17Full, KIP17Burnable, Ownable {
+    using SafeMath for uint256;
+    using Address for address;
+    event Burn(uint256 id);
+    address payable Contract_owner;
+    uint256 private _finalTokenId = 0;
+    uint256 private _mintID_Max = 1000;
+    uint256 private mint_fee = 1000000000000000000;
+    uint256 private _oneWalletMax = 0;
+
+    
+    constructor (string memory name_, string memory symbol_, string memory tokenURL_) KIP17Full(name_,symbol_, tokenURL_) public {
+        Contract_owner=msg.sender;        
+    }
+    function get_maxmint() public view returns (uint256) {return _oneWalletMax;}
+    function set_maxmint(uint256 newMaxvalue) public returns (bool) {
+        require( checkManager(msg.sender) == true || Contract_owner == msg.sender, "Manager or Owner function only");
+        _oneWalletMax = newMaxvalue;
+        return true;
+    }
+
+    function get_mintFee() public view returns (uint256) {return mint_fee;}
+    function set_mintFee(uint256 wamount) public returns (bool) {
+        require( checkManager(msg.sender) == true || Contract_owner == msg.sender, "Manager or Owner function only");
+        uint256 newMintFee = wamount * (10 ** uint256(18));
+        mint_fee = newMintFee;
+    }
+    function get_mintableMax() public view returns (uint256) {return _mintID_Max;}
+    function set_mintableMax(uint256 mintMaxnewValue) public returns (uint256) {
+        require( checkManager(msg.sender) == true || Contract_owner == msg.sender, "Manager or Owner function only");
+        require( mintMaxnewValue > _mintID_Max , "Current max is bigger than setting value !");
+        _mintID_Max = mintMaxnewValue;
+        return _mintID_Max;
+    }
+
+    function get_ContractBalance() public view returns (uint256){return address(this).balance;}
+    function withdrwal_cont_to_outwallet(uint256 wamount) public returns (bool) {
+        require( checkManager(msg.sender) == true || Contract_owner == msg.sender, "Manager or Owner function only");
+        uint256 myBal = address(this).balance;
+        require( wamount < myBal, "Not enough balance of contract !" );
+        msg.sender.transfer(wamount);
+    }
+
+    function mint_Owner(address to , uint256 cnt) external returns (uint256) {
+        require( checkManager(msg.sender) == true || Contract_owner == msg.sender, "Manager or Owner function only");
+        for(uint256 i = 0; i <  cnt; i++ ){
+            require( _finalTokenId < _mintID_Max , "The minting limit quantity has been exceeded.");
+            uint256 id = _finalTokenId;
+            _mint(to, id);
+            _finalTokenId++;
+        }
+        return _finalTokenId;
+    }
+    function mintByUser(address account) payable external returns (uint256){
+        uint256 user_mintFee = msg.value;
+        if( _oneWalletMax > 0 ){
+            uint256 user_tokenCnt = balanceOf(account);
+            require( user_tokenCnt < _oneWalletMax , "The max amount of Mint exceeds!");
+        }
+        
+        require( _finalTokenId < _mintID_Max , "The minting limit quantity has been exceeded.");
+        require( user_mintFee == mint_fee , "Not enough value to mint");
+        uint256 id = _finalTokenId;
+        _mint(account, id);
+        _finalTokenId++;
+        return id;
+    }
+
+    function tokensOfOwner(address owner) external view returns (uint256[] memory) {return _tokensOfOwner(owner);}
+    function ownerTokenLength(address owner) external view returns (uint256) {return _tokensOfOwner(owner).length;}
+    function burnItem(uint256 tokenId) external {_burnItem(tokenId);}
+    function _burnItem(uint256 tokenId) internal {
+        super.burn(tokenId);
+        emit Burn(tokenId);
+    }
+}
